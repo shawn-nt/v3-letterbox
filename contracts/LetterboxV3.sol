@@ -39,7 +39,13 @@ contract LetterboxV3 is RMRKMultiResource {
         _tokenIdAuto.increment();
     }
 
-    event contractPaused()
+    event contractPaused(bool paused);
+
+    event resourceAdded(
+        uint256 indexed tokenId_,
+        uint64 indexed resourceId,
+        string indexed resourceMetadata
+    );
 
     function mapLetterboxAddr(address to_, uint256 tokenId_) private {
         letterboxesToAddresses[to_].letterboxIds.push(tokenId_);
@@ -147,8 +153,7 @@ contract LetterboxV3 is RMRKMultiResource {
         bool isAccepted
     ) internal {
         uint64 resourceId = nextResourceId();
-        //appears to be deprecated with updates to RMRK code -   uint128[] memory custom;
-        _addResourceEntry(resourceId, resourceMetadata);
+        addResourceEntry(resourceMetadata);
         _addResourceToToken(tokenId_, resourceId, 0); // i believe if overwrite is 0 it will prevent from overwriting a token.
 
         if (isAccepted == true) {
@@ -160,6 +165,7 @@ contract LetterboxV3 is RMRKMultiResource {
                 //error
             }
         }
+        emit resourceAdded(tokenId_, resourceId, resourceMetadata);
     }
 
     function stampToLetterbox(
@@ -185,18 +191,11 @@ contract LetterboxV3 is RMRKMultiResource {
     //ATTENTION : needs a modifier for contract owner CHECK THIS
     //IMPORTANT SECURITY STEP! CHECK THIS!
 
-    function withdraw() public payable {
+    function withdraw() public payable onlyAdmin {
         payable(msg.sender).transfer(address(this).balance);
     }
 
-    function addResourceEntry(
-        //  uint64 id,  change this to be _resourceIdAuto instead
-        string memory metadataURI
-    )
-        public
-        // uint128[] memory custom  //this appears deprecated in updates to RMRK code
-        isNotPaused
-    {
+    function addResourceEntry(string memory metadataURI) public isNotPaused {
         //this is to set the variable as a uint64  - could be an issue if overflow?
         uint64 currentResource = nextResourceId();
         _addResourceEntry(currentResource, metadataURI);
@@ -223,7 +222,7 @@ contract LetterboxV3 is RMRKMultiResource {
 
     function pauseContract(bool state) public onlyAdmin {
         paused = state;
-        emit contractPaused;
+        emit contractPaused(paused);
     }
 
     function isPaused() public view returns (bool) {
